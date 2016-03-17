@@ -1,0 +1,21 @@
+-- VERSION_4
+-- START DISKCACHE_2
+C:\Users\Jani\Documents\Python Scripts\BayesianNetworks\.metadata\.plugins\org.eclipse.core.resources\.projects\bayesnets\com.python.pydev.analysis\v2_indexcache
+readbif.__init__|1458242902460346000|C:\Users\Jani\Documents\Python Scripts\BayesianNetworks\bayesnets\readbif\__init__.py
+readbif.node|1458242957687953000|C:\Users\Jani\Documents\Python Scripts\BayesianNetworks\bayesnets\readbif\node.py
+readbif.readfile|1458242954352023000|C:\Users\Jani\Documents\Python Scripts\BayesianNetworks\bayesnets\readbif\readfile.py
+data.__init__|1458242979960886000|C:\Users\Jani\Documents\Python Scripts\BayesianNetworks\bayesnets\data\__init__.py
+-- END DISKCACHE
+-- START DICTIONARY
+2
+2=MyClass
+1=readbif.node
+-- END DICTIONARY
+-- START TREE 1
+1
+myc|1|MyClass!9@
+-- END TREE
+-- START TREE 2
+1
+__i|1|__init__!2&10@
+-- END TREE
