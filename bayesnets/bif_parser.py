@@ -5,6 +5,15 @@ class Node:
         self.states = states
         self.table = table
         self.tablegivens = tablegivens
+    def getName(self):
+        return self.name;
+    def getStates(self):
+        return self.states
+    def getTable(self):
+        return self.table
+    def getTableGivens(self):
+        return self.tablegivens
+
 class Parser:
     def __init__(self):
        self.data = []
