@@ -45,7 +45,7 @@ class Parser:
                     tableDict = OrderedDict()
                     while(i<counter):
                         z = f.readline().replace(",", " ").replace(";", " ").replace("(", " ").replace(")", " ").split()
-                        print(z)
+                       # print(z)
                         conditionNames = []
                         probValues = []
                         for x in z:
@@ -58,7 +58,7 @@ class Parser:
                         tableDict[tuple(conditionNames)] = probValues
                         i = i+1
                     dict[a[2]].table = tableDict
-                    print(tableDict)
+                    #print(tableDict)
                     #print(dataParents)
                 else:
                     probDict = OrderedDict()
@@ -71,4 +71,4 @@ class Parser:
                     dict[a[2]].table = probDict
         #for i in dict:
             #print(dict[i].name)
-        return tableDict
+        return dict
