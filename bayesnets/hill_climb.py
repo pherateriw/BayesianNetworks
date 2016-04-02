@@ -10,30 +10,36 @@ def run():
     #print(varlist)
     #print(tables['KINKEDTUBE'].getTable())
     edges = list()
+    edgesprime = list()
     score = -maxsize
     maxscore = score -1
     while(score > maxscore):
         maxscore = score
         for x in tables:
-            #tabx = tables[x].getTable()
-            #print(tabx)
-            #namex = tables[x].getName()
-            #statesx = tables[x].getStates()
-            #parentsx = tables[x].getTableGivens()
-            #print()
-            #print(namex)
-            #print(tabx)
-            #print(statesx)
-            #print(parentsx)
-            #for z in tabx:
-                #print(z, " : ",  tabx[z])
             for y in tables:
-                taby = tables[y].getTable()
-                tabx = tables[x].getTable()
-                if(x,y) in edges:
-                    print((x,y))
-                else:
-                    print("not", (x,y))
+                if x != y:
+                    taby = tables[y].getTable()
+                    tabx = tables[x].getTable()
+                    if(x,y) in edges:
+                        print((x,y))
+                        #subtract edge
+                        #recalculate probability tables and score
+                        #flip edge
+                        #recalculate probability tables and score
+                        newscore = 0
+                    else:
+                        print(x,y)
+                        #add edge
+                        #recalculate probability tables and score
+                    if newscore > score:
+                        score = newscore
+                        
+def bifScore(edgeList, probTables):
+    return 0
+
+def recalculateProbTables(edgesList, probTables):
+    return probTables
+                        
                 
                 
                     
