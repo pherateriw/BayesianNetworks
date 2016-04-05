@@ -18,7 +18,7 @@ def run():
     #while(score > maxscore):
     maxscore = score
     for x in tables:
-        print(x, len(tables[x].getTableGivens()))
+        #print(x, len(tables[x].getTableGivens()))
         for y in tables:
             if x != y:
                 taby = tables[y].getTable()
@@ -54,9 +54,9 @@ def recalculateProbTables(edgesList, probTables, tablesPrime):
         if x in z:
             if len(z) == 1:
                 tablesPrime[y] = bif_parser.Node(y, yStates, z, yProb)
-                #print(y, tablesPrime[y])
             elif len(z) >1:
                 count  = 0
+                probTablePrime = OrderedDict()
                 for i in z:
                     if (i, y) in edgesList:
                         count += 1
@@ -64,7 +64,6 @@ def recalculateProbTables(edgesList, probTables, tablesPrime):
                         #want to remove i from z and i from table
                         iplace = z.index(i)
                         z.remove(i)
-                        #print(y, len(yProb), yProb)
                         #should cycle through yprob,
                         for line in yProb:
                             #create partial tuples of yprob key with None instead of i states
@@ -74,25 +73,23 @@ def recalculateProbTables(edgesList, probTables, tablesPrime):
                             a = tuple(a)
                             #Find all partial tuples that match each other
                             tuplesmatch = GetTuples(yProb, a, tuplelen)
-                            print(tuplesmatch)
                             a = list(a)
                             a.pop(iplace)
                             a = tuple(a)
-                            #add the probabilities of the matching tuples
                             probability = []
-                            for state in yStates:
-                            
-                            #Divide each probability by the number of matching partial tuples
-
-                            #create a dictionary of a:probability
+                            for state in range(len(yStates)):
+                                probSum = 0
+                                for match in tuplesmatch:
+                                    #add the probabilities of the matching tuples
+                                    probSum += yProb[match][state]
+                                #Divide each probability by the number of matching partial tuples
+                                probability.append(probSum / len(tuplesmatch))
+                            #create a dictionary entry of a:probability
+                            probTablePrime[a] = probability
                 if count == len(z):
                     tablesPrime[y] = bif_parser.Node(y, yStates, z, yProb)
-                #i = z.index(y)
-           
-            
-            #print(olist)
-            #find the probability in the table
-            #calculate
+                else:
+                    tablesPrime[y] = bif_parser.Node(y, yStates, z, probTablePrime)
         else:
             if not z[0]:
                # print(z)
