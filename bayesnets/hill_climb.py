@@ -3,9 +3,10 @@ from sys import maxsize
 from collections import OrderedDict
 
 def run():
+    #TODO: replace following 3 lines with importing data table
     m = bif_parser.Parser() #instantiate parser
     tables = m.createTable('alarm.bif') #call parsing function
-    tablesprime = OrderedDict() #creat probability tables list
+    tablesprime = OrderedDict() #create probability tables list
     varlist = list(tables.keys()) #determine the list of variables
     tablist = list(tables.values())
     edges = list() #create edge list

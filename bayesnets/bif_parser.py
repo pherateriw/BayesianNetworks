@@ -6,7 +6,7 @@ class Node:
         self.table = table
         self.tablegivens = tablegivens
     def getName(self):
-        return self.name;
+        return self.name
     def getStates(self):
         return self.states
     def getTable(self):
