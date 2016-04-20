@@ -1,9 +1,17 @@
 from particle import Particle
 
-def psoE(numParticles, data):
+def ecPSO(numParticles, data):
     #import data
     particles = initParticles(numParticles)
-    for 
+    terminate = False
+    while(!terminate):
+        for p in particles:
+            p.setVelocity(updateVelocity(p.getVelocity()))
+            p = updatePosition(p)
+            #if p.getScore() > pbest.getScore():
+                #pbest = p.deepcopy()
+                #if pbest.getScore() > gbest.getScore():
+                    #gbest = pbest.deepcopy()
     
 
 
@@ -28,14 +36,18 @@ def makeV(x, y, z, score, adjMat, chainMat, distance):
 def calculateScore():
     pass
 
-def updateScore():
-    pass
-
 def calculateDistance():
     pass
 
 def updateDistance():
     pass
+
+def updateVelocity(velocity):
+    return velocity
+
+def updatePosition(particle):
+    #call update score
+    return particle
 
 def initParticles(numParticles):
     particleList = [Particle(numParticle)]*numParticles
@@ -66,7 +78,10 @@ def initParticles(numParticles):
                 #calculate score
         #add p to list of particles
         #set pbest of particles to current particle
-        #find best particle and set to gbest
+        pass
+    #find best particle  and set to gbest
+    for p in range(numParticles):
+        #initialize velocity
         pass
     return particleList #also how to store pbest and gbest?
     

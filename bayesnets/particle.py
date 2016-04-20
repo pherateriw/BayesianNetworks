@@ -7,6 +7,7 @@ class Particle:
         self.pbestDistance = maxsize
         self.gbestDistance = maxsize
         self.velocity = {}
+        self.score = 0
         
 
     def getData(self):
@@ -41,4 +42,10 @@ class Particle:
 
     def setVelocity(self, velocity):
         self.velocity = velocity
+
+    def getScore(self):
+        return self.score
+
+    def setScore(self, score):
+        self.score = score
 
