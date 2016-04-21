@@ -1,4 +1,4 @@
-
+from sys import maxsize
 
 class Particle:
     def __init__(self, numNodes):

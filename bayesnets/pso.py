@@ -1,10 +1,12 @@
 from particle import Particle
+import bif_parser as parser
+from sys import maxsize
 
-def ecPSO(numParticles, data):
+def ecPSO(numParticles, numNodes, data):
     #import data
-    particles = initParticles(numParticles)
+    particles = initParticles(numParticles, numNodes)
     terminate = False
-    while(!terminate):
+    while not terminate:
         for p in particles:
             p.setVelocity(updateVelocity(p.getVelocity()))
             p = updatePosition(p)
@@ -12,6 +14,7 @@ def ecPSO(numParticles, data):
                 #pbest = p.deepcopy()
                 #if pbest.getScore() > gbest.getScore():
                     #gbest = pbest.deepcopy()
+        terminate = True
     
 
 
@@ -33,8 +36,10 @@ def deleteU(x, y, score, adjMat, chainMat, distance):
 def makeV(x, y, z, score, adjMat, chainMat, distance):
     pass
 
-def calculateScore():
-    pass
+def calculateScore(particle):
+    """returns the BDeu criterion """
+    for node in len(particle.adjMat):
+        pass
 
 def calculateDistance():
     pass
@@ -49,8 +54,8 @@ def updatePosition(particle):
     #call update score
     return particle
 
-def initParticles(numParticles):
-    particleList = [Particle(numParticle)]*numParticles
+def initParticles(numParticles, numNodes):
+    particleList = [Particle(numNodes)]*numNodes
     for p in range(numParticles):
         #initialize p with:
             #adjacency matrix
@@ -85,3 +90,14 @@ def initParticles(numParticles):
         pass
     return particleList #also how to store pbest and gbest?
     
+def main():
+    p = parser.Parser()
+    (massiveDictionary,adjacencyDictionary) = p.fileparser('asia.bif')
+    massiveData = p.dataGeneration(massiveDictionary,200) #specify desired number of samples
+    ecPSO(5,len(massiveData[0]), massiveData)
+    #print(massiveData)
+    #JANETTE#
+    #adjacencyDict is the one you are prolly interested in
+    #instead of 50 replace it with how many samples you want
+    
+if __name__ == "__main__": main()

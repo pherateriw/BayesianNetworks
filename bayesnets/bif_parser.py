@@ -172,14 +172,4 @@ class Parser:
         #print(generatedCompleteData)
         return generatedCompleteData
         
-def main():
-    p = Parser()
-    (massiveDictionary,adjacencyDictionary) = p.fileparser('alarm.bif')
-    massiveData = p.dataGeneration(massiveDictionary,200) #specify desired number of samples
-    print(massiveData)
-    #JANETTE#
-    #adjacencyDict is the one you are prolly interested in
-    #instead of 50 replace it with how many samples you want
-    
-if __name__ == "__main__": main()
 
