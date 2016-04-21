@@ -2,6 +2,7 @@ from sys import maxsize
 
 class Particle:
     def __init__(self, numNodes):
+        self.numNodes = numNodes
         self.adjMat = [[0]*numNodes]*numNodes
         self.chainMat = [[0]*numNodes]*numNodes
         self.pbestDistance = maxsize
