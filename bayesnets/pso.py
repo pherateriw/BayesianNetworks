@@ -2,10 +2,19 @@ from particle import Particle
 import bif_parser as parser
 from sys import maxsize
 import math as m
+from copy import deepcopy
 
-def ecPSO(numParticles, numNodes, data, statesdict):
+def ecPSO(numParticles, numNodes, data, completeGraph):
     #import data
+    for x in data:
+        print(x)
     particles = initParticles(numParticles, numNodes)
+    #print(completeGraph)
+    numStates = list()
+    for node in completeGraph:
+        num = completeGraph[node].number
+        states = completeGraph[node].getStates()
+        numStates.append(deepcopy(states))
     terminate = False
     while not terminate:
         for p in particles:
@@ -19,7 +28,7 @@ def ecPSO(numParticles, numNodes, data, statesdict):
     
 
 
-def insertU(x, y, score, particle, distance):
+def insertU(x, y, score, particle, distance, numStates, data):
     #need validity checks
     nx = findNeighbors(x, particle)
     ny = findNeighbors(y, particle)
@@ -28,14 +37,14 @@ def insertU(x, y, score, particle, distance):
     nxy.append(yPi)
     adding = nxy.deepcopy()
     adding.append(x)
-    score = score + m.log(calcNodeScore(y,adding, particle)) - m.log(calcNodeScore(y,nxy, particle))
+    score = score + m.log(calcNodeScore(y,adding, particle, numStates, data)) - m.log(calcNodeScore(y,nxy, particle, numStates, data))
     particle.setScore(score)
     particle.adjMat[x[y]] = 1
     particle.adjMat[y[x]] = 1
     #need to adjust distance
     return particle
 
-def insertD(x, y, score,  particle, distance):
+def insertD(x, y, score,  particle, distance, numStates, data):
     #need validity checks
     xPi = findParents(x, particle)
     yPi = findParents(y, particle)
@@ -46,14 +55,14 @@ def insertD(x, y, score,  particle, distance):
     newOmega = omega.deepcopy()
     newOmega.append(newyPi)
     omega.append(yPi)
-    score = score + m.log(calcNodeScore(y,newOmega, particle)) - m.log(calcNodeScore(y,omega, particle))
+    score = score + m.log(calcNodeScore(y,newOmega, particle, numStates, data))- m.log(calcNodeScore(y,omega, particle, numStates, data))
     particle.setScore(score)
     particle.adjMat[x[y]] = 1
     particle.adjMat[y[x]] = 0
     #need to adjust distance
     return particle
 
-def deleteD(x, y, score,  particle, distance):
+def deleteD(x, y, score,  particle, distance, numStates, data):
     #need validity checks
     yPi = findParents(y, particle)
     ny = findNeighbors(y, particle)
@@ -62,13 +71,13 @@ def deleteD(x, y, score,  particle, distance):
     newNy = ny.deepcopy()
     newNy.append(newyPi)
     ny.append(yPi)
-    score = score + m.log(calcNodeScore(y,newNy, particle)) - m.log(calcNodeScore(y,ny, particle))
+    score = score + m.log(calcNodeScore(y,newNy, particle, numStates, data)) - m.log(calcNodeScore(y,ny, particle, numStates, data))
     particle.setScore(score)
     particle.adjMat[x[y]] = 0
     #need to adjust distance
     return particle
 
-def reverseD(x, y, score,  particle, distance):
+def reverseD(x, y, score,  particle, distance, numStates, data):
     #need validity checks
     yPi = findParents(y, particle)
     newyPi = yPi.deepcopy()
@@ -80,15 +89,15 @@ def reverseD(x, y, score,  particle, distance):
 
     nx = findNeighbors(x, particle)
     omega = findOmega(yPi,nx) 
-    score = score + m.log((calcNodeScore(y,newyPi, particle) * calcNodeScore(x,newxPi.append(omega), particle))/
-                          (calcNodeScore(y,yPi, particle)*calcNodeScore(x,xPi.append(omega), particle)))
+    score = score + m.log((calcNodeScore(y,newyPi, particle, numStates, data) * calcNodeScore(x,newxPi.append(omega), particle, numStates, data))/
+                          (calcNodeScore(y,yPi, particle, numStates, data)*calcNodeScore(x,xPi.append(omega), particle, numStates, data)))
     particle.setScore(score)
     particle.adjMat[x[y]] = 0
     particle.adjMat[y[x]] = 0
     #need to adjust distance
     return particle
 
-def deleteU(x, y, score,  particle, distance):
+def deleteU(x, y, score,  particle, distance, numStates, data):
     #need validity checks
     nx = findNeighbors(x, particle)
     ny = findNeighbors(y, particle)
@@ -97,14 +106,14 @@ def deleteU(x, y, score,  particle, distance):
     nxy.append(yPi)
     removing = nxy.deepcopy()
     removing.append(x)
-    score = score + m.log(calcNodeScore(y,nxy, particle)) - m.log(calcNodeScore(y,removing, particle))
+    score = score + m.log(calcNodeScore(y,nxy, particle, numStates, data)) - m.log(calcNodeScore(y,removing, particle, numStates, data))
     particle.setScore(score)
     particle.adjMat[x[y]] = 0
     particle.adjMat[y[x]] = 0
     #need to adjust distance
     pass
 
-def makeV(x, y, z, score,  particle, distance):
+def makeV(x, y, z, score,  particle, distance, numStates, data):
     #need validity checks
     yPi = findParents(y, particle)
     zPi = findParents(x, particle)
@@ -125,7 +134,9 @@ def makeV(x, y, z, score,  particle, distance):
 
     last = yPi.deepcopy()
     last.append(nxy)
-    score = score + m.log((calcNodeScore(z,newzPi.append(newnxy1), particle) * calcNodeScore(y,yPi.append(newnxy2), particle))/ (calcNodeScore(z,zPi.append(newnxy1), particle)*calcNodeScore(y,last, particle)))
+    score = score + m.log((calcNodeScore(z,newzPi.append(newnxy1), particle, numStates, data) * calcNodeScore(y,yPi.append(newnxy2), particle, numStates, data))/
+                          (calcNodeScore(z,zPi.append(newnxy1), particle, numStates, data)*
+                           calcNodeScore(y,last, particle, numStates, data)))
 
     particle.setScore(score)
     particle.adjMat[x[z]] = 1
@@ -182,17 +193,23 @@ def updatePosition(particle):
     #call update score
     return particle
 
-def calcNodeScore(node, parents, particle):
+def calcNodeScore(node, parents, numStates, data):
     #qi = number of configurations of parent set
+    qi = 1
+    for parent in parents:
+        qi = qi*len(numStates[parent])
     #ri = number of states of variable xi
+    ri = len(numStates[node])
     #Nijk = number of records in D for which xi = k and bigPi is in the jth configuration
     #Nij = Nijk summed over k
     jscore = 1
     for j in range(qi):
+        Nij = findNij(node, j, parents, numStates, data)
         topj = m.gamma(10/qi)
         bottomj = m.gamma((10/qi)+Nij)
         kscore = 1
         for k in range(ri):
+            Nijk = findNijk(node, k, j, parents, numStates, data)
             topk = m.gamma((10/ri*qi) + Nijk)
             bottomk = m.gamma(10/(ri*qi))
             kscore = kscore * (topk / bottomk)
@@ -201,15 +218,49 @@ def calcNodeScore(node, parents, particle):
     score = exp*jscore
     return score
 
-def calculateScore(particle):
+def calculateScore(particle, numStates, data):
     """returns the BDeu criterion """
     score = 1
     for i in len(particle.adjMat): #i = ith node
         bigPi = findParents(i, particle)
-        score = score*calcNodeScore(i, bigPi,  particle)
+        score = score*calcNodeScore(i, bigPi, particle, numStates, data)
     score = m.log(score)
     return score
     
+def findNij(i, j, parents, numStates, data):
+    #i is a number
+    #j corresponds to a state instantiation
+    nij = 0
+    search = []
+    for g in data[0]:
+        search.append(None)
+    runningj = j
+    for p in parents:
+        if runningj < len(numStates[p]):
+            search[p] = numStates[p][runningj]
+        else:
+            runningj - len(numStates[p])
+            search[p] = numStates[p][-1]
+    nij += countInstances(data, search, len(data[0]))
+    return nij
+        
+def findNijk(i, k, j, parents, numStates, data):
+    #i is a number
+    #j corresponds to a state instantiation
+    nijk = 0
+    search = []
+    for g in data[0]:
+        search.append(None)
+    search[i] = numStates[i][k]
+    runningj = j
+    for p in parents:
+        if runningj < len(numStates[p]):
+            search[p] = numStates[p][runningj]
+        else:
+            runningj - len(numStates[p])
+            search[p] = numStates[p][-1]
+    nijk += countInstances(data, search, len(data[0]))
+    return nijk
 
 def initParticles(numParticles, numNodes):
     particleList = [Particle(numNodes)]*numParticles
@@ -246,12 +297,24 @@ def initParticles(numParticles, numNodes):
         #initialize velocity
         pass
     return particleList #also how to store pbest and gbest?
+
+def countInstances(data, pattern, datalen):
+    count = 0
+    for k in data:
+        match = True
+        for i in range(datalen):
+            if pattern[i] is not None and pattern[i] != k[i]:
+                match = False
+                break
+        if match is True:
+            count += 1
+    return count      
     
 def main():
     p = parser.Parser()
     (massiveDictionary,adjacencyDictionary) = p.fileparser('asia.bif')
-    massiveData = p.dataGeneration(massiveDictionary,200) #specify desired number of samples
-    ecPSO(5,len(massiveData[0]), massiveData)
+    massiveData = p.dataGeneration(massiveDictionary,10) #specify desired number of samples
+    ecPSO(5,len(massiveData[0]), massiveData, massiveDictionary)
     #print(massiveData)
     #JANETTE#
     #adjacencyDict is the one you are prolly interested in
