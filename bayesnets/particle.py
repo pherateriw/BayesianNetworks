@@ -8,7 +8,7 @@ class Particle:
         self.pbestDistance = maxsize
         self.gbestDistance = maxsize
         self.velocity = {}
-        self.score = 0
+        self.score = -maxsize
         
 
     def getData(self):
