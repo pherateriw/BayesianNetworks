@@ -3,10 +3,20 @@ from sys import maxsize
 class Particle:
     def __init__(self, numNodes):
         self.numNodes = numNodes
-        self.adjMat = [[0]*numNodes]*numNodes
-        self.chainMat = [[0]*numNodes]*numNodes
-        self.pbestDistance = maxsize
-        self.gbestDistance = maxsize
+        self.adjMat = list()
+        for i in range(numNodes):
+            minilist = list()
+            for j in range(numNodes):
+                minilist.append(0)
+            self.adjMat.append(minilist)
+        self.chainMat = list()
+        for i in range(numNodes):
+            minilist2 = list()
+            for j in range(numNodes):
+                minilist2.append(0)
+            self.chainMat.append(minilist2)
+        self.pbestDistance = list()
+        self.gbestDistance = list()
         self.velocity = {}
         self.score = -maxsize
         

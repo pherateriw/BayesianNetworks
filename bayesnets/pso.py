@@ -5,8 +5,9 @@ import math as m
 from copy import deepcopy
 import random
 from decimal import Decimal
+import hill_climb
 
-def ecPSO(numParticles, numIterations, numNodes, data, completeGraph):
+def ecPSO(phi1, phi2, numParticles, numIterations, numNodes, data, completeGraph):
     #import data
     numStates = list()
     for node in completeGraph:
@@ -17,151 +18,226 @@ def ecPSO(numParticles, numIterations, numNodes, data, completeGraph):
     gbest = deepcopy(particles[0])
     pbest = list()
     bestscore = -maxsize
-    for pi in particles:
-        pbest.append(deepcopy(pi))
-        if pi.getScore() > bestscore:
-            gbest = deepcopy(pi)
+    for pm in particles:
+        pbest.append(deepcopy(pm))
+        if pm.getScore() > bestscore:
+            gbest = deepcopy(pm)
             bestscore = gbest.getScore()
-    
+    for pj in range(len(particles)):
+        dp = calculateDistance(pbest[pj], particles[pj])
+        dg = calculateDistance(gbest, particles[pj])
+        particles[pj].setPBestDist(dp)
+        particles[pj].setGBestDist(dg)
     #print(completeGraph)
    
     iteration = 0
     while iteration < numIterations:
         for p in particles:
             pi = particles.index(p)
-            p.setVelocity(updateVelocity(p.getVelocity()))
-            p = updatePosition(p)
+            p = updatePosition(phi1, phi2, p, pbest[pi], gbest, numStates, data)
+            
             if p.getScore() > pbest[pi].getScore():
-                pbest = deepcopy(p)
+                pbest[pi] = deepcopy(p)
+                p.setPBestDist(list())
                 if pbest[pi].getScore() > gbest.getScore():
                     gbest = deepcopy(pbest[pi])
+                    for i in particles:
+                        i.setGBestDist(calculateDistance(gbest, i))
         iteration += 1
+    for q in range(len(gbest.adjMat)):
+        for r in range(len(gbest.adjMat)):
+            if gbest.adjMat[q][r] == 1 and gbest.adjMat[r][q] == 1:
+                rand = random.random()
+                if rand >= 0.5:
+                    gbest.adjMat[q][r] = 0
+                else:
+                    gbest.adjMat[r][q] = 0
+                
+    return gbest
     
-
-
-def insertU(x, y, particle, distance, numStates, data):
-    #need validity checks
+def insertU(x, y, particle, pbest, gbest, numStates, data):
     nx = findNeighbors(x, particle)
     ny = findNeighbors(y, particle)
     nxy = findSharedNeighbors(nx, ny)
     yPi = findParents(y, particle)
-    nxy = appendNoDrama(nxy, yPi)
-    adding = deepcopy(nxy)
-    adding = appendNoDrama(adding, [x])
-    score = particle.getScore()
-    score = score + calcNodeScore(y,adding, numStates, data) - calcNodeScore(y,nxy, numStates, data)
-    particle.setScore(score)
-    particle.adjMat[x][y] = 1
-    particle.adjMat[y][x] = 1
+    xPi = findParents(x, particle)
+    if undirPathValidityCheck(x, y, nxy, deepcopy(particle.chainMat)) and parentsEqualValidityCheck(xPi, yPi):
+        nxy = appendNoDrama(nxy, yPi)
+        adding = deepcopy(nxy)
+        adding = appendNoDrama(adding, [deepcopy(x)])
+        score = particle.getScore()
+        score = score + calcNodeScore(y,adding, numStates, data) - calcNodeScore(y,nxy, numStates, data)
+        particle.setScore(score)
+        particle.adjMat[x][y] = 1
+        particle.adjMat[y][x] = 1
+        particle.chainMat[x][y] = 1
+        particle.chainMat[y][x] = 1
+        dp = particle.getPBestDist()
+        newdp = updateDistance(x, y, particle, pbest, dp)
+        particle.setPBestDist(newdp)
+        dg = particle.getGBestDist()
+        newdg = updateDistance(x, y, particle, gbest, dg)
+        particle.setPBestDist(newdg)
     #need to adjust distance
     return particle
 
-def insertD(x, y, particle, distance, numStates, data):
-    #need validity checks
+def insertD(x, y, particle, pbest, gbest, numStates, data):
     xPi = findParents(x, particle)
     yPi = findParents(y, particle)
-    newyPi = deepcopy(yPi)
-    newyPi = appendNoDrama(newyPi, [x])
-    ny = findNeighbors(y, particle)
     omega = findOmega(xPi, yPi)
-    newOmega = deepcopy(omega)
-    newOmega = appendNoDrama(newOmega, newyPi)
-    omega = appendNoDrama(omega, yPi)
-    score = particle.getScore()
-    score = score + calcNodeScore(y,newOmega, numStates, data) - calcNodeScore(y,omega, numStates, data)
-    particle.setScore(score)
-    particle.adjMat[x][y] = 1
-    particle.adjMat[y][x] = 0
-    #need to adjust distance
+    if True: #insertDFirstValidityCheck(x, y, omega, deepcopy(particle.adjMat)) and nxyCliqueValidityCheck(omega, deepcopy(particle.adjMat)) and not parentsEqualValidityCheck(xPi, yPi):
+        newyPi = deepcopy(yPi)
+        newyPi = appendNoDrama(newyPi, [x])
+        ny = findNeighbors(y, particle)
+        newOmega = deepcopy(omega)
+        newOmega = appendNoDrama(newOmega, newyPi)
+        omega = appendNoDrama(omega, yPi)
+        score = particle.getScore()
+        score = score + calcNodeScore(y,newOmega, numStates, data) - calcNodeScore(y,omega, numStates, data)
+        particle.setScore(score)
+        particle.adjMat[x][y] = 1
+        particle.adjMat[y][x] = 0
+        particle.chainMat[x][y] = 0
+        particle.chainMat[y][x] = 0
+        #need to adjust distance
+        dp = particle.getPBestDist()
+        newdp = updateDistance(x, y, particle, pbest, dp)
+        particle.setPBestDist(newdp)
+        dg = particle.getGBestDist()
+        newdg = updateDistance(x, y, particle, gbest, dg)
+        particle.setPBestDist(newdg)
     return particle
 
-def deleteD(x, y, particle, distance, numStates, data):
-    #need validity checks
+def deleteD(x, y, particle, pbest, gbest, numStates, data):
     yPi = findParents(y, particle)
     ny = findNeighbors(y, particle)
-    newyPi = deepcopy(yPi)
-    if x in newyPi:
-        newyPi.remove(x)
-    newNy = deepcopy(ny)
-    newNy = appendNoDrama(newNy, newyPi)
-    ny = appendNoDrama(ny, yPi)
-    score = particle.getScore()
-    score = score + calcNodeScore(y,newNy, numStates, data) - calcNodeScore(y,ny, numStates, data)
-    particle.setScore(score)
-    particle.adjMat[x][y] = 0
-    #need to adjust distance
+    if nxyCliqueValidityCheck(ny, deepcopy(particle.adjMat)):
+        newyPi = deepcopy(yPi)
+        if x in newyPi:
+            newyPi.remove(x)
+        newNy = deepcopy(ny)
+        newNy = appendNoDrama(newNy, newyPi)
+        ny = appendNoDrama(ny, yPi)
+        score = particle.getScore()
+        score = score + calcNodeScore(y,newNy, numStates, data) - calcNodeScore(y,ny, numStates, data)
+        particle.setScore(score)
+        particle.adjMat[x][y] = 0
+        particle.adjMat[y][x] = 0
+        particle.chainMat[x][y] = 0
+        particle.chainMat[y][x] = 0
+        #need to adjust distance
+        dp = particle.getPBestDist()
+        newdp = updateDistance(x, y, particle, pbest, dp)
+        particle.setPBestDist(newdp)
+        dg = particle.getGBestDist()
+        newdg = updateDistance(x, y, particle, gbest, dg)
+        particle.setPBestDist(newdg)
+
     return particle
 
-def reverseD(x, y, particle, distance, numStates, data):
-    #need validity checks
+def reverseD(x, y, particle, pbest, gbest, numStates, data):
     yPi = findParents(y, particle)
-    newyPi = deepcopy(yPi)
-    if x in newyPi:
-        newyPi.remove(x)
-
     xPi = findParents(x, particle)
-    newxPi = deepcopy(xPi)
-    newxPi = appendNoDrama(newxPi, [y])
-
     nx = findNeighbors(x, particle)
+    ny = findNeighbors(y, particle)
     omega = findOmega(yPi,nx)
-    score = particle.getScore()
-    score = score + calcNodeScore(y,newyPi, numStates, data) + calcNodeScore(x,appendNoDrama(newxPi, omega), numStates, data) - calcNodeScore(y,yPi, numStates, data) + calcNodeScore(x,appendNoDrama(xPi, omega), numStates, data)
-    particle.setScore(score)
-    particle.adjMat[x][y] = 0
-    particle.adjMat[y][x] = 0
-    #need to adjust distance
+    if reverseDFirstValidityCheck(x,y, omega, ny, deepcopy(particle.adjMat)) and nxyCliqueValidityCheck(omega, deepcopy(particle.adjMat)):
+        newyPi = deepcopy(yPi)
+        if x in newyPi:
+            newyPi.remove(x)
+        newxPi = deepcopy(xPi)
+        newxPi = appendNoDrama(newxPi, [y])
+        score = particle.getScore()
+        score = score + calcNodeScore(y,newyPi, numStates, data) + calcNodeScore(x,appendNoDrama(newxPi, omega), numStates, data) - calcNodeScore(y,yPi, numStates, data) + calcNodeScore(x,appendNoDrama(xPi, omega), numStates, data)
+        particle.setScore(score)
+        particle.adjMat[x][y] = 0
+        particle.adjMat[y][x] = 0
+        particle.chainMat[x][y] = 0
+        particle.chainMat[y][x] = 0
+        #need to adjust distance
+        dp = particle.getPBestDist()
+        newdp = updateDistance(x, y, particle, pbest, dp)
+        particle.setPBestDist(newdp)
+        dg = particle.getGBestDist()
+        newdg = updateDistance(x, y, particle, gbest, dg)
+        particle.setPBestDist(newdg)
     return particle
 
-def deleteU(x, y, particle, distance, numStates, data):
-    #need validity checks
+def deleteU(x, y, particle, pbest, gbest, numStates, data):
     nx = findNeighbors(x, particle)
     ny = findNeighbors(y, particle)
     nxy = findSharedNeighbors(nx, ny)
-    yPi = findParents(y, particle)
-    nxy = appendNoDrama(nxy, yPi)
-    removing = deepcopy(nxy)
-    removing = appendNoDrama(removing, [x])
-    score = particle.getScore()
-    score = score + calcNodeScore(y,nxy, numStates, data) - calcNodeScore(y,removing, numStates, data)
-    particle.setScore(score)
-    particle.adjMat[x][y] = 0
-    particle.adjMat[y][x] = 0
-    #need to adjust distance
-    pass
+    if nxyCliqueValidityCheck(nxy, deepcopy(particle.adjMat)):
+        yPi = findParents(y, particle)
+        nxy = appendNoDrama(nxy, yPi)
+        removing = deepcopy(nxy)
+        removing = appendNoDrama(removing, [x])
+        score = particle.getScore()
+        score = score + calcNodeScore(y,nxy, numStates, data) - calcNodeScore(y,removing, numStates, data)
+        particle.setScore(score)
+        particle.adjMat[x][y] = 0
+        particle.adjMat[y][x] = 0
+        particle.chainMat[x][y] = 0
+        particle.chainMat[y][x] = 0
+        #need to adjust distance
+        dp = particle.getPBestDist()
+        newdp = updateDistance(x, y, particle, pbest, dp)
+        particle.setPBestDist(newdp)
+        dg = particle.getGBestDist()
+        newdg = updateDistance(x, y, particle, gbest, dg)
+        particle.setPBestDist(newdg)
+    return particle
 
-def makeV(x, y, z, particle, distance, numStates, data):
-    #need validity checks
-    yPi = findParents(y, particle)
-    zPi = findParents(x, particle)
-    
+def makeV(x, y, z, particle, pbest, gbest, numStates, data):
     nx = findNeighbors(x, particle)
     ny = findNeighbors(y, particle)
     nxy = findSharedNeighbors(nx, ny)
 
-    newzPi = deepcopy(zPi)
-    newzPi = appendNoDrama(newzPi, [y])
+    if undirPathValidityCheck(x,y,nxy, deepcopy(particle.chainMat)):
+        yPi = findParents(y, particle)
+        zPi = findParents(z, particle)
 
-    newnxy1 = deepcopy(nxy)
-    newnxy1 = appendNoDrama(newnxy1, [x])
-    newnxy1.remove(z)
-    
-    newnxy2 = deepcopy(nxy)
-    newnxy2.remove(z)
+        newzPi = deepcopy(zPi)
+        newzPi = appendNoDrama(newzPi, [y])
 
-    last = deepcopy(yPi)
-    last = appendNoDrama(last, nxy)
+        newnxy1 = deepcopy(nxy)
+        newnxy1 = appendNoDrama(newnxy1, [x])
+        if z in newnxy1:
+            newnxy1.remove(z)
+        
+        newnxy2 = deepcopy(nxy)
+        if z in newnxy2:
+            newnxy2.remove(z)
 
-    score = particle.getScore()
-    score=score+calcNodeScore(z,appendNoDrama(newzPi,newnxy1),numStates,data)+calcNodeScore(y,appendNoDrama(yPi,newnxy2),numStates,data)-calcNodeScore(z,appendNoDrama(zPi,newnxy1),numStates,data)+calcNodeScore(y,last,particle,numStates,data)
+        last = deepcopy(yPi)
+        last = appendNoDrama(last, nxy)
 
-    particle.setScore(score)
-    particle.adjMat[x][z] = 1
-    particle.adjMat[z][x] = 0
-    particle.adjMat[y][z] = 1
-    particle.adjMat[z][y] = 0
-    #need to adjust distance
-    pass
+        score = particle.getScore()
+        score=score+calcNodeScore(z,appendNoDrama(newzPi,newnxy1),numStates,data)+calcNodeScore(y,appendNoDrama(yPi,newnxy2),numStates,data)-calcNodeScore(z,appendNoDrama(zPi,newnxy1),numStates,data)+calcNodeScore(y,last, numStates,data)
+
+        particle.setScore(score)
+        particle.adjMat[x][z] = 1
+        particle.adjMat[z][x] = 0
+        particle.adjMat[y][z] = 1
+        particle.adjMat[z][y] = 0
+        particle.chainMat[x][z] = 0
+        particle.chainMat[y][z] = 0
+        particle.chainMat[z][x] = 0
+        particle.chainMat[z][y] = 0
+        #need to adjust distance
+        dp = particle.getPBestDist()
+        newdp = updateDistance(x, z, particle, pbest, dp)
+        particle.setPBestDist(newdp)
+        dg = particle.getGBestDist()
+        newdg = updateDistance(x, z, particle, gbest, dg)
+        particle.setPBestDist(newdg)
+        dp = particle.getPBestDist()
+        newdp = updateDistance(y, z, particle, pbest, dp)
+        particle.setPBestDist(newdp)
+        dg = particle.getGBestDist()
+        newdg = updateDistance(y, z, particle, gbest, dg)
+        particle.setPBestDist(newdg)
+    return particle
 
 def findParents(x, particle):
     #finds nodes that have directed edges to x
@@ -186,7 +262,7 @@ def findSharedNeighbors(xNeighborSet, yNeighborSet):
     for i in range(len(xNeighborSet)):
         for j in range(len(yNeighborSet)):
             if xNeighborSet[i] == yNeighborSet[j]:
-                sharedN.append(xNeighorSet[i])
+                sharedN.append(xNeighborSet[i])
     return sharedN
 
 def findOmega(xParentsSet, yNeighborSet):
@@ -194,7 +270,7 @@ def findOmega(xParentsSet, yNeighborSet):
     for i in range(len(xParentsSet)):
         for j in range(len(yNeighborSet)):
             if xParentsSet[i] == yNeighborSet[j]:
-                bigOmega.append(xNeighorSet[i])
+                bigOmega.append(yNeighborSet[j])
     return bigOmega
 
 def appendNoDrama(set1, set2):
@@ -207,18 +283,267 @@ def appendNoDrama(set1, set2):
             newset.append(set2[s2])
     return newset
 
-def calculateDistance():
-    pass
+def undirPathValidityCheck(x, y, Nxy, chainMat):
+    searching = True
+    visitedNodes = list()
+    while searching:
+        xtemp = deepcopy(x)
+        S = list()
+        S.append(xtemp)
+        visitedNodes.append(xtemp)
+        visitedEdges = list()
+        while len(S) > 0:
+            v = S.pop()
+            if v == y:
+                if y not in visitedNodes:
+                    visitedNodes.append(y)
+                #check that visitedEdges contains at least one pair of edges (i, j), (j, k) such that j in Nxy
+                inNxy = False
+                for (i, j) in visitedEdges:
+                    for k in range(len(chainMat)):
+                        if i != k and j != k:
+                            if (j,k) in visitedEdges or (k, j) in visitedEdges:
+                                if j in Nxy:
+                                    inNxy = True
+                                    chainMat[i][j] = 0
+                                    chainMat[j][i] = 0
+                                    chainMat[j][k] = 0
+                                    chainMat[k][j] = 0
+                                    break
+                    if inNxy:
+                        break
+                if not Nxy:
+                    return False
+                else:
+                    break
+            else:
+                if v not in visitedNodes:
+                    visitedNodes.append(v)
+                for node in range(len(chainMat)):
+                    if chainMat[v][node] == 1:
+                        if(v, node) not in visitedEdges and (node, v) not in visitedEdges:
+                            visitedEdges.append((v,node))
+        if y not in visitedNodes:
+            searching = False
+    return True
 
-def updateDistance():
-    pass
+def parentsEqualValidityCheck(xPi, yPi):
+    if len(xPi) == len(yPi):
+        sharedParents = findSharedNeighbors(xPi, yPi)
+        if len(sharedParents) == len(xPi) and len(sharedParents) == len(yPi):
+            return True
+        else:
+            return False
+    else:
+        return False
 
-def updateVelocity(velocity):
-    return velocity
+def nxyCliqueValidityCheck(Nxy, adjMat):
+    n1 = len(Nxy)
+    count = 0
+    for node1 in Nxy:
+        for node2 in Nxy:
+            if node1 != node2:
+                if adjMat[node1][node2] == 1:
+                    count += 1
+    n = n1 * (n1-1)
+    if count == n:
+        return True
+    #will take Nxy or OmegaXY
+    return False
 
-def updatePosition(particle):
-    #call update score
-    return particle
+def insertDFirstValidityCheck(x, y, omegaXY, adjMat):
+    searching = True
+    visitedNodes = list()
+    while searching:
+        xtemp = deepcopy(x)
+        S = list()
+        S.append(xtemp)
+        visitedNodes.append(xtemp)
+        visitedEdges = list()
+        while len(S) > 0:
+            v = S.pop()
+            if v == y:
+                if y not in visitedNodes:
+                    visitedNodes.append(y)
+                #check that visitedEdges contains at least one pair of edges (i, j), (j, k) such that j in Nxy
+                inNxy = False
+                for (i, j) in visitedEdges:
+                    for k in range(len(adjMat)):
+                        if i != k and j != k:
+                            if (j,k) in visitedEdges or (k, j) in visitedEdges:
+                                if j in Nxy:
+                                    inNxy = True
+                                    adjMat[i][j] = 0
+                                    adjMat[j][i] = 0
+                                    adjMat[j][k] = 0
+                                    adjMat[k][j] = 0
+                                    break
+                    if inNxy:
+                        break
+                if not Nxy:
+                    return False
+                else:
+                    break
+            else:
+                if v not in visitedNodes:
+                    visitedNodes.append(v)
+                for node in range(len(adjMat)):
+                    if adjMat[v][node] == 1:
+                        if(v, node) not in visitedEdges and (node, v) not in visitedEdges:
+                            visitedEdges.append((v,node))
+        if y not in visitedNodes:
+            searching = False
+    return True
+
+def reverseDFirstValidityCheck(x, y, omegaXY, Ny, adjMat):
+    Nxy = deepcopy(omegaXY)
+    Nxy = appendNoDrama(Nxy, Ny)
+    searching = True
+    visitedNodes = list()
+    if adjMat[x][y] == 1 or adjMat[y][x] == 1:
+        adjMat[x][y] = 0
+        adjMat[y][x] = 0
+    while searching:
+        xtemp = deepcopy(x)
+        S = list()
+        S.append(xtemp)
+        visitedNodes.append(xtemp)
+        visitedEdges = list()
+        while len(S) > 0:
+            v = S.pop()
+            if v == y:
+                if y not in visitedNodes:
+                    visitedNodes.append(y)
+                #check that visitedEdges contains at least one pair of edges (i, j), (j, k) such that j in Nxy
+                inNxy = False
+                for (i, j) in visitedEdges:
+                    for k in range(len(adjMat)):
+                        if i != k and j != k:
+                            if (j,k) in visitedEdges or (k, j) in visitedEdges:
+                                if j in Nxy:
+                                    inNxy = True
+                                    adjMat[i][j] = 0
+                                    adjMat[j][i] = 0
+                                    adjMat[j][k] = 0
+                                    adjMat[k][j] = 0
+                                    break
+                    if inNxy:
+                        break
+                if not Nxy:
+                    return False
+                else:
+                    break
+            else:
+                if v not in visitedNodes:
+                    visitedNodes.append(v)
+                for node in range(len(adjMat)):
+                    if adjMat[v][node] == 1:
+                        if(v, node) not in visitedEdges and (node, v) not in visitedEdges:
+                            visitedEdges.append((v,node))
+        if y not in visitedNodes:
+            searching = False
+    return True
+
+def calculateDistance(best, particle):
+    distance = list()
+    for i in range(len(particle.adjMat)):
+        for j in range(len(particle.adjMat[0])):
+            if best.adjMat[i][j] != particle.adjMat[i][j]:
+                if (i, j) not in distance and (j,i) not in distance:
+                    distance.append((i,j))
+    return distance
+
+def updateDistance(x, y, particle, best, distance):
+    if (x,y) in distance or (y,x) in distance:
+        if particle.adjMat[x][y] == best.adjMat[x][y] and particle.adjMat[y][x] == best.adjMat[y][x]:
+            try:
+                ind = distance.index((x,y))
+            except Exception:
+                ind = distance.index((y,x))
+            del(distance[ind])
+        #determine if bestxy and particlexy is same
+        #if is same
+            #subtract (x,y) from distance
+    else:
+        if particle.adjMat[x][y] != best.adjMat[x][y] or particle.adjMat[y][x] != best.adjMat[y][x]:
+            distance.append((x,y))
+        #determine if bestxy and particlexy is same
+        #if is not same
+            #add (x,y) to distance
+    return distance
+
+def updatePosition(phi1, phi2, p, pbest, gbest, numStates, data):
+    count = 0
+    for (node1, node2) in p.pbestDistance:
+        r1 = random.random()
+        if r1 <= phi1:
+            p = performUpdates(p, node1, node2, pbest, gbest, numStates, data)
+    for (node1, node2) in p.gbestDistance:
+        r2 = random.random()
+        if r2 <= phi2:
+            p = performUpdates(p, node1, node2, pbest, gbest, numStates, data)
+    return p
+        
+
+def performUpdates(p, node1, node2, pbest, gbest, numStates, data):
+    if p.adjMat[node1][node2] == 0 and p.adjMat[node2][node1] == 0: #no edge
+        r1 = random.random()
+        if r1 >= 0.5:
+            p = insertU(node1, node2, p, pbest, gbest, numStates, data)
+            
+        else:
+            p = insertD(node1, node2, p,pbest, gbest,  numStates, data)
+            
+    elif p.adjMat[node1][node2] == 1 and p.adjMat[node2][node1] == 0: #directed edge
+        r1 = random.random()
+        if r1 >= 0.5:
+            p = deleteD(node1, node2, p, pbest, gbest, numStates, data)
+            
+        else:
+            p = reverseD(node1, node2, p, pbest, gbest,  numStates, data)
+            
+    elif p.adjMat[node2][node1] == 1 and p.adjMat[node1][node2] == 0: #directed edge other direction
+        r1 = random.random()
+        if r1 >= 0.5:
+            p = deleteD(node2, node1, p, pbest, gbest, numStates, data)
+            
+        else:
+            p = reverseD(node2, node1, p, pbest, gbest, numStates, data)
+            
+    else:                                                           #find potential V structure
+        
+        madeChange = False
+        for el in range(len(p.chainMat)):
+            for em in range(len(p.chainMat)):
+                if p.chainMat[el][em] == 1:
+                    for en in range(len(p.chainMat)):
+                        if p.chainMat[em][en] == 1 and p.chainMat[el][en] == 0:
+                            
+                            madeChange = True
+                            r1 = random.random()
+                            if r1 < 0.5:
+                                r2 = random.random()
+                                if r2 >= 0.5:
+                                    p = deleteU(el, em, p, pbest, gbest, numStates, data)
+                                else:
+                                    p = deleteU(em, en, p, pbest, gbest, numStates, data)
+                                
+                            else:
+                                p = makeV(el, em, en, p, pbest, gbest, numStates, data)
+                                
+                        else:
+                            r1 = random.random()
+                            if r1 >= 0.9:
+                                madeChange = True
+                                p = deleteU(el, em, p, pbest, gbest, numStates, data)
+                                
+                        if madeChange:
+                            break
+                if madeChange:
+                    break
+            if madeChange:
+                break
+    return p
 
 def calcNodeScore(node, parents, numStates, data):
     nt = 1
@@ -292,49 +617,80 @@ def findNijk(i, k, j, parents, numStates, data):
     return nijk
 
 def initParticles(numParticles, numNodes, numStates, data):
-    particleList = [Particle(numNodes)]*numParticles
+    
+    particleList = list()
+    for i in range(numParticles):
+        particleList.append(Particle(numNodes))
     for p in particleList:
-        r = random.randint(0, 4)
+        r = random.randint(numNodes/2, numNodes)
         for it in range(r):
+           
             node1 = random.randint(0, numNodes-1)
             node2 = random.randint(0, numNodes-1)
             while node1 == node2:
                 node2 = random.randint(0, numNodes-1)
-            print(numNodes, node1, node2, len(p.adjMat), len(p.adjMat[0])) 
-            if p.adjMat[node1][node2] == 0 and p.adjMat[node2][node1] == 0:
+            
+            if p.adjMat[node1][node2] == 0 and p.adjMat[node2][node1] == 0: #no edge
                 r1 = random.random()
                 if r1 >= 0.5:
-                    insertU(node1, node2, p, [], numStates, data)
+                    p = insertU(node1, node2, p, p, p, numStates, data)
+                    
                 else:
-                    insertD(node1, node2, p, [], numStates, data)
-            elif p.adjMat[node1][node2] == 1 and p.adjMat[node2][node1] == 0:
+                    p = insertD(node1, node2, p,p, p,  numStates, data)
+                    
+            elif p.adjMat[node1][node2] == 1 and p.adjMat[node2][node1] == 0: #directed edge
                 r1 = random.random()
                 if r1 >= 0.5:
-                    deleteD(node1, node2, p, [], numStates, data)
+                    p = deleteD(node1, node2, p, p, p, numStates, data)
+                    
                 else:
-                    reverseD(node1, node2, p, [], numStates, data)
-            elif p.adjMat[node2][node1] == 1 and p.adjMat[node1][node2] == 0:
+                    p = reverseD(node1, node2, p, p, p,  numStates, data)
+                    
+            elif p.adjMat[node2][node1] == 1 and p.adjMat[node1][node2] == 0: #directed edge other direction
                 r1 = random.random()
                 if r1 >= 0.5:
-                    deleteD(node2, node1, p, [], numStates, data)
+                    p = deleteD(node2, node1, p, p, p, numStates, data)
+                    
                 else:
-                    reverseD(node2, node1, p, [], numStates, data)
-            elif p.adjMat[node1][node2] == 1 and p.adjMat[node2][node1] == 1:
-                r1 = random.random()
-                if r1 >= 0.5:
-                    deleteU(node1, node2, p, [], numStates, data)
-            #elif two undirected edges exist pointing to same node:
-                #randomly select between makeV(x,y,z, p, [], numStates, data), deleteU(x,y, p, [], numStates, data), and deleteU(y,z, p, [], numStates, data)
-                #perform selected operators
-        for n1 in range(len(p.adjMat)):
-            for n2 in range(len(p.adjMat)):
-                if n1 != n2:
-                    if p.adjMat[n1][n2] == 1 and p.adjMat[n2][n1] == 1:
-                        p.chainMat[n1][n2] = 1
-                        p.chainMat[n2][n1] = 1
+                    p = reverseD(node2, node1, p, p, p, numStates, data)
+                    
+            else:                                                           #find potential V structure
+                
+                madeChange = False
+                for el in range(len(p.chainMat)):
+                    for em in range(len(p.chainMat)):
+                        if p.chainMat[el][em] == 1:
+                            for en in range(len(p.chainMat)):
+                                if p.chainMat[em][en] == 1 and p.chainMat[el][en] == 0:
+                                    
+                                    madeChange = True
+                                    r1 = random.random()
+                                    if r1 < 0.5:
+                                        r2 = random.random()
+                                        if r2 >= 0.5:
+                                            p = deleteU(el, em, p, p, p, numStates, data)
+                                        else:
+                                            p = deleteU(em, en, p, p, p, numStates, data)
+                                        
+                                    else:
+                                        p = makeV(el, em, en, p,p,p, numStates, data)
+                                        
+                                else:
+                                    r1 = random.random()
+                                    if r1 >= 0.9:
+                                        madeChange = True
+                                        p = deleteU(el, em, p, p, p, numStates, data)
+                                        
+                                if madeChange:
+                                    break
+                        if madeChange:
+                            break
+                    if madeChange:
+                        break
         score = calculateScore(p, numStates, data)
+        
         p.setScore(score)
-    return particleList #also how to store pbest and gbest?
+    return particleList 
 
 def countInstances(data, pattern, datalen):
     count = 0
@@ -346,16 +702,59 @@ def countInstances(data, pattern, datalen):
                 break
         if match is True:
             count += 1
-    return count      
-    
+    return count
+
+def compareGraphs(particle, graphDict):
+    if (len(graphDict) != particle.numNodes):
+        return False
+    #first create an array with the number of elements
+    nodeCounter = 0
+    for i in graphDict:
+        basicAdjacencyArray = []
+        for j in graphDict:
+            basicAdjacencyArray.append(0) 
+        for parents in graphDict[i].tablegivens:
+            if parents in graphDict:
+                basicAdjacencyArray[graphDict[parents].number] = 1
+        if basicAdjacencyArray != particle.adjMat[nodeCounter]:
+            return False
+        nodeCounter = nodeCounter + 1
+    return True
+
+def probTables(nodes,states,massiveData,massiveDictionary): #say nodes are A B C D and you want them to be in +a -b +c -d or something like that
+    # assuming both are being passsed as arrays and in order so
+    #probTables([A,B,C,D], [+a,-b,+c,-d])
+    #assuming that both arrays elements have been passed as strings "A" "B" etc
+    #massiveData are the samples that have been generated already
+    positions = []
+    validSample = 0
+    counter = 0
+    for i in nodes:
+        if i in massiveDictionary:
+            positions.append(massiveDictionary[i].number) #append the index on A,B etc in massiveDictionary to positions array
+    for i in massiveData:
+        k = 0
+        validSample = 1
+        while(k<len(positions)):
+            if(i[positions[k]] != states[k]):
+                validSample = 0
+                break
+            k = k+1
+        if validSample == 1:
+            counter = counter + 1
+    return float(counter/len(massiveData))
+
+
 def main():
     p = parser.Parser()
     (massiveDictionary,adjacencyDictionary) = p.fileparser('asia.bif')
-    massiveData = p.dataGeneration(massiveDictionary,10) #specify desired number of samples
-    ecPSO(5,10, len(massiveData[0]), massiveData, massiveDictionary)
-    #print(massiveData)
-    #JANETTE#
-    #adjacencyDict is the one you are prolly interested in
-    #instead of 50 replace it with how many samples you want
+    massiveData = p.dataGeneration(massiveDictionary,100) #specify desired number of samples
+    hcAlgo = hill_climb.HC()
+    gbest = ecPSO(0.7, 0.7, 5,1000, len(massiveData[0]), massiveData, massiveDictionary)
+    
+    edges = hcAlgo.hillclimb(len(massiveData[0]), massiveData, massiveDictionary)
+    print(edges)
+    print(gbest)
     
 if __name__ == "__main__": main()
+    
