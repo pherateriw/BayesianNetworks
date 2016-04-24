@@ -7,7 +7,7 @@ import random
 from decimal import Decimal
 import hill_climb
 
-def ecPSO(phi1, phi2, numParticles, numIterations, numNodes, data, completeGraph):
+def ecPSO(phi1, phi2, expl, numParticles, numIterations, numNodes, data, completeGraph):
     #import data
     numStates = list()
     for node in completeGraph:
@@ -32,9 +32,10 @@ def ecPSO(phi1, phi2, numParticles, numIterations, numNodes, data, completeGraph
    
     iteration = 0
     while iteration < numIterations:
+        print(gbest.getScore())
         for p in particles:
             pi = particles.index(p)
-            p = updatePosition(phi1, phi2, p, pbest[pi], gbest, numStates, data)
+            p = updatePosition(phi1, phi2,expl, p, pbest[pi], gbest, numStates, data)
             
             if p.getScore() > pbest[pi].getScore():
                 pbest[pi] = deepcopy(p)
@@ -85,7 +86,7 @@ def insertD(x, y, particle, pbest, gbest, numStates, data):
     xPi = findParents(x, particle)
     yPi = findParents(y, particle)
     omega = findOmega(xPi, yPi)
-    if True: #insertDFirstValidityCheck(x, y, omega, deepcopy(particle.adjMat)) and nxyCliqueValidityCheck(omega, deepcopy(particle.adjMat)) and not parentsEqualValidityCheck(xPi, yPi):
+    if insertDFirstValidityCheck(x, y, omega, deepcopy(particle.adjMat)) and nxyCliqueValidityCheck(omega, deepcopy(particle.adjMat)) and not parentsEqualValidityCheck(xPi, yPi):
         newyPi = deepcopy(yPi)
         newyPi = appendNoDrama(newyPi, [x])
         ny = findNeighbors(y, particle)
@@ -237,6 +238,9 @@ def makeV(x, y, z, particle, pbest, gbest, numStates, data):
         dg = particle.getGBestDist()
         newdg = updateDistance(y, z, particle, gbest, dg)
         particle.setPBestDist(newdg)
+    else:
+        insertD(x, z, particle, pbest, gbest, numbStates, data)
+    
     return particle
 
 def findParents(x, particle):
@@ -472,31 +476,61 @@ def updateDistance(x, y, particle, best, distance):
             #add (x,y) to distance
     return distance
 
-def updatePosition(phi1, phi2, p, pbest, gbest, numStates, data):
+def updatePosition(phi1, phi2, expl, p, pbest, gbest, numStates, data):
     count = 0
     for (node1, node2) in p.pbestDistance:
         r1 = random.random()
         if r1 <= phi1:
-            p = performUpdates(p, node1, node2, pbest, gbest, numStates, data)
+            p = performUpdates(expl, p, node1, node2, pbest, pbest, gbest, numStates, data)
+        else:
+            pass
     for (node1, node2) in p.gbestDistance:
         r2 = random.random()
         if r2 <= phi2:
-            p = performUpdates(p, node1, node2, pbest, gbest, numStates, data)
+            p = performUpdates(expl, p, node1, node2, gbest, pbest, gbest, numStates, data)
+        else:
+            pass
     return p
         
 
-def performUpdates(p, node1, node2, pbest, gbest, numStates, data):
+def performUpdates(expl, p, node1, node2, best, pbest, gbest, numStates, data):
     if p.adjMat[node1][node2] == 0 and p.adjMat[node2][node1] == 0: #no edge
-        r1 = random.random()
-        if r1 >= 0.5:
-            p = insertU(node1, node2, p, pbest, gbest, numStates, data)
-            
-        else:
-            p = insertD(node1, node2, p,pbest, gbest,  numStates, data)
+        if best.adjMat[node1][node2] == 1 and p.adjMat[node2][node1] == 1:
+            r1 = random.random()
+            if r1 >= expl:
+                p = insertU(node1, node2, p, pbest, gbest, numStates, data)
+                
+            else:
+                p = insertD(node1, node2, p,pbest, gbest,  numStates, data)
+        elif best.adjMat[node1][node2] == 1 and best.adjMat[node2][node1] == 0:
+            r1 = random.random()
+            if r1 >= expl:
+                p = insertD(node2, node1, p,pbest, gbest,  numStates, data)
+                
+            else:
+                r1 = random.random()
+                if r1 >= expl:
+                    p = insertD(node1, node2, p,pbest, gbest,  numStates, data)
+                    
+                else:
+                    p = insertU(node1, node2, p, pbest, gbest, numStates, data)
+        elif best.adjMat[node1][node2] == 0 and best.adjMat[node2][node1] == 1:
+            r1 = random.random()
+            if r1 >= expl:
+                p = insertD(node1, node2, p,pbest, gbest,  numStates, data)
+                
+            else:
+                r1 = random.random()
+                if r1 >= expl:
+                    p = insertD(node2, node1, p,pbest, gbest,  numStates, data)
+                    
+                else:
+                    p = insertU(node1, node2, p, pbest, gbest, numStates, data)
+                
             
     elif p.adjMat[node1][node2] == 1 and p.adjMat[node2][node1] == 0: #directed edge
         r1 = random.random()
-        if r1 >= 0.5:
+        if r1 >= expl:
             p = deleteD(node1, node2, p, pbest, gbest, numStates, data)
             
         else:
@@ -504,7 +538,7 @@ def performUpdates(p, node1, node2, pbest, gbest, numStates, data):
             
     elif p.adjMat[node2][node1] == 1 and p.adjMat[node1][node2] == 0: #directed edge other direction
         r1 = random.random()
-        if r1 >= 0.5:
+        if r1 >= expl:
             p = deleteD(node2, node1, p, pbest, gbest, numStates, data)
             
         else:
@@ -521,9 +555,9 @@ def performUpdates(p, node1, node2, pbest, gbest, numStates, data):
                             
                             madeChange = True
                             r1 = random.random()
-                            if r1 < 0.5:
+                            if r1 >= expl:
                                 r2 = random.random()
-                                if r2 >= 0.5:
+                                if r2 >= expl:
                                     p = deleteU(el, em, p, pbest, gbest, numStates, data)
                                 else:
                                     p = deleteU(em, en, p, pbest, gbest, numStates, data)
@@ -533,7 +567,7 @@ def performUpdates(p, node1, node2, pbest, gbest, numStates, data):
                                 
                         else:
                             r1 = random.random()
-                            if r1 >= 0.9:
+                            if r1 >= expl:
                                 madeChange = True
                                 p = deleteU(el, em, p, pbest, gbest, numStates, data)
                                 
@@ -546,7 +580,7 @@ def performUpdates(p, node1, node2, pbest, gbest, numStates, data):
     return p
 
 def calcNodeScore(node, parents, numStates, data):
-    nt = 1
+    nt = 10
     #qi = number of configurations of parent set
     qi = 1
     for parent in parents:
@@ -567,7 +601,7 @@ def calcNodeScore(node, parents, numStates, data):
             bottomk = m.lgamma(nt/(ri*qi))
             kscore = kscore + (topk - bottomk)
         jscore = jscore + (topj - bottomj) + kscore
-    d = Decimal(0.2 ** ((ri-1)*qi))
+    d = Decimal(0.09 ** ((ri-1)*qi))
     exp = d.ln()
     js = Decimal(jscore)
     score = exp + js
@@ -622,7 +656,7 @@ def initParticles(numParticles, numNodes, numStates, data):
     for i in range(numParticles):
         particleList.append(Particle(numNodes))
     for p in particleList:
-        r = random.randint(numNodes/2, numNodes)
+        r = random.randint(numNodes, 2*numNodes)
         for it in range(r):
            
             node1 = random.randint(0, numNodes-1)
@@ -748,13 +782,17 @@ def probTables(nodes,states,massiveData,massiveDictionary): #say nodes are A B C
 def main():
     p = parser.Parser()
     (massiveDictionary,adjacencyDictionary) = p.fileparser('asia.bif')
-    massiveData = p.dataGeneration(massiveDictionary,100) #specify desired number of samples
+    massiveData = p.dataGeneration(massiveDictionary,1000) #specify desired number of samples
     hcAlgo = hill_climb.HC()
-    gbest = ecPSO(0.7, 0.7, 5,1000, len(massiveData[0]), massiveData, massiveDictionary)
-    
     edges = hcAlgo.hillclimb(len(massiveData[0]), massiveData, massiveDictionary)
     print(edges)
-    print(gbest)
+    gbest = ecPSO(0.5, 0.5, 0.9, 10,100, len(massiveData[0]), massiveData, massiveDictionary)
+    
+    
+    
+    for line in gbest.adjMat:
+        print(line)
+    #print(gbest)
     
 if __name__ == "__main__": main()
     
